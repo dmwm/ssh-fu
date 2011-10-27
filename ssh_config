@@ -1,0 +1,71 @@
+Host *.cern.ch *.fnal.gov *.mit.edu
+  GSSAPIAuthentication yes
+  GSSAPIDelegateCredentials yes
+  PubkeyAuthentication yes
+
+Host *.fnal.gov
+  PreferredAuthentications gssapi-with-mic,gssapi,password
+
+Host lxvoadm*.cern.ch lxplus*.cern.ch cmslpc*.fnal.gov
+  PreferredAuthentications gssapi-with-mic,gssapi,password
+  ProxyCommand none
+  GSSAPITrustDNS yes
+
+Host lxvoadm*.cern.ch
+  DynamicForward 47170
+
+Host cmslpc22.fnal.gov
+  DynamicForward 47270
+
+Host lxvoadm*.cern.ch vo*.cern.ch cms*.cern.ch lxbuild*.cern.ch macms*.cern.ch cmslpc*.fnal.gov cmssrv*.fnal.gov
+  ForwardAgent yes
+
+Host *cvs*.cern.ch *svn*.cern.ch
+  # CVS: http://www.mail-archive.com/debian-ssh@lists.debian.org/msg05389.html
+  # SVN: concurrent accesses (e.g. inside cmsBuild) seem to fight over tunnel.
+  ControlPersist no
+  ProxyCommand none
+
+Host *.cern.ch
+  GSSAPITrustDNS no
+  ProxyCommand proxy-ssh lxvoadm5.cern.ch /usr/bin/nc %h %p
+
+Host *.fnal.gov
+  GSSAPITrustDNS no
+  ProxyCommand proxy-ssh cmslpc22.fnal.gov /usr/bin/nc %h %p
+
+Host vocms144.cern.ch
+  DynamicForward 47171
+
+Host vocms202.cern.ch
+  DynamicForward 47172
+
+Host vocms201.cern.ch
+  DynamicForward 47173
+
+Host cmssrv98.fnal.gov
+  User cmsdataops
+  DynamicForward 47271
+
+Host cmssrv112.fnal.gov
+  User cmsdataops
+  DynamicForward 47172
+
+Host cmssrv73.fnal.gov
+  User cmsdatatransfers
+  DynamicForward 47173
+  # ForwardX11 yes
+  # ForwardX11Trusted yes
+
+Host *
+  ServerAliveInterval 5
+  ServerAliveCountMax 6
+  ControlPersist 15
+  ControlMaster auto
+  ControlPath ~/.ssh/link-%r@%h.%p
+  GSSAPIRenewalForcesRekey yes
+  GSSAPITrustDNS yes
+  ForwardX11 no
+  # ForwardX11 yes
+  # ForwardX11Trusted yes
+  Protocol 2

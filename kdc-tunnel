@@ -1,0 +1,125 @@
+#!/usr/bin/env python
+
+"""kdc-tunnel [-LN:H:M]... [-p TCP-PORT] PORT:KDC-HOST:KDC-PORT USER@HOST
+
+   Tunnel kerberos UDP traffic over SSH TCP tunnel. Listens on
+   UDP port PORT, wraps the traffic over SSH tunnel to USER@HOST,
+   and converts it again to UDP requests to KDC-HOST on KDC-PORT
+   at the remote end. Any replies received are converted back to
+   response over the SSH TCP tunnel and sent back locally.
+
+   This little utility is very useful if you are on a network which
+   firewalls kerberos traffic, and the KDC will only talk UDP.
+
+   The script needs to be in $PATH on SSH destination as well.
+
+   Example:
+     kdc-tunnel -L88:cerndc.cern.ch:88 -L587:smtp.cern.ch:587 \\
+                89:kdc-fnal-1.fnal.gov:88 lat@lxvoadm.cern.ch
+"""
+
+import os, sys, socket, signal, select, tempfile, shutil
+from optparse import OptionParser
+
+def serve_client(local_port, tunnel_port):
+  """Run server for the client. Receives KDC UDP requests on `local_port`,
+  translating them into TCP messages to tunnel_port. Any data received from
+  the TCP connection is sent back to the UDP client as messages."""
+
+  # Create UDP socket and listen for KDC requests.
+  incoming = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+  incoming.bind(('127.0.0.1', local_port))
+
+  # For each KDC request received, initiate new TCP connection, pass the
+  # request, and send any data received back to the UDP socket.
+  while True:
+    data, addr = incoming.recvfrom(1500)
+    msg = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    msg.connect(('127.0.0.1', tunnel_port))
+    msg.send(data)
+    msg.shutdown(socket.SHUT_WR)
+    reply = ''
+    while True:
+      xreply = msg.recv(1500)
+      if not xreply: break
+      reply += xreply
+
+    incoming.sendto(reply, addr)
+    msg.close()
+
+def serve_tunnel(local_port, remote_host, remote_port):
+  """Run server at the end of the tunnel. Receives TCP connections from SSH
+  on `local_port`, and translates them into UDP erquests to `remote_host` on
+  `remote_port`. Any replies received from the remote are sent back to the
+  TCP socket."""
+
+  # Create TCP socket and listen to tunneled requests, and UDP socket for
+  # outbound requests.
+  msg = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+  incoming = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+  incoming.bind(('127.0.0.1', local_port))
+  incoming.listen(1)
+
+  # For each request received, send a UDP message and wait for exactly
+  # one reply message, and send that back to the client. Close the TCP
+  # connection immediately after sending the message data.
+  while True:
+    conn, addr = incoming.accept()
+    data = conn.recv(1500)
+    while True:
+      msg.sendto(data, (remote_host, remote_port))
+      r, w, e = select.select([msg], [], [], 1)
+      if msg not in r: continue
+      reply, addr = msg.recvfrom(1500)
+      break
+
+    conn.send(reply)
+    conn.close()
+
+def kill_ssh(tempdir, cmd):
+  """Kill off the ssh connection. SSHs to the host again and kills the
+  server process running there, as killing off the SSH process is useless."""
+  os.spawnvp(os.P_WAIT, cmd[0], cmd)
+  shutil.rmtree(tempdir, True)
+  sys.exit(0)
+
+# Parse command line arguments.
+opt = OptionParser(usage = __doc__)
+opt.add_option("--serve", action="store_true", dest="server", default=False, help="run server")
+opt.add_option("-p", type="int", dest="port", default=18889, help="tcp port")
+opt.add_option("-L", action="append", dest="forwards", default=[], help="forwards")
+opts, args = opt.parse_args()
+
+# Check we got exactly two arguments. Both server and client will take
+# two arguments, client 'REDIRECT USER@HOST', server 'REDIRECT TCP-PORT'.
+if len(args) != 2:
+  print >> sys.stderr, "%s: exactly two arguments required" % sys.argv[0]
+  sys.exit(1)
+
+# Check the redirect argument is of the form PORT:HOST:PORT.
+redirect = args[0].split(':')
+if len(redirect) != 3 or not redirect[0].isdigit() or not redirect[2].isdigit():
+  print >> sys.stderr, "%s: expected LOCAL-PORT:HOSTNAME:REMOTE-PORT forward argument, got %s" % args[0]
+  sys.exit(1)
+
+# Run the server process.
+if opts.server:
+  serve_tunnel(int(args[1]), redirect[1], int(redirect[2]))
+else:
+  tempdir = tempfile.mkdtemp()
+  ssh_cmd = ['ssh'] + ["-L%s" % x for x in opts.forwards] + \
+    ['-L%d:localhost:%d' % (opts.port, opts.port)] + \
+    ['-S', '%s/link-%%r@%%h.%%p' % tempdir] + \
+    ['-oPreferredAuthentications=password'] + \
+    ['-oControlMaster=auto', args[1]] + \
+    ['kdc-tunnel --serve %s %s' % (args[0], opts.port)]
+  os.spawnvp(os.P_NOWAIT, ssh_cmd[0], ssh_cmd)
+  kill_cmd = [x for x in ssh_cmd[:-1]
+              if not x.startswith("-L")
+              and not x.startswith("-oPref")] + \
+             ['kill $(pgrep -u $USER -f kdc-tunnel)']
+
+  for sig in signal.SIGINT, signal.SIGTERM, signal.SIGQUIT:
+    signal.signal(sig, lambda *args: kill_ssh(tempdir, kill_cmd))
+
+  serve_client(int(redirect[0]), opts.port)

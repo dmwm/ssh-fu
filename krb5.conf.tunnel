@@ -1,0 +1,28 @@
+# AD <- for cern-config-keytab
+[libdefaults]
+default_realm = CERN.CH
+ticket_lifetime = 25h
+renew_lifetime = 120h
+forwardable = true
+proxiable = true
+default_tkt_enctypes = arcfour-hmac-md5 aes256-cts aes128-cts des3-cbc-sha1 des-cbc-md5 des-cbc-crc
+
+[realms]
+CERN.CH = {
+ default_domain = cern.ch
+ kdc = localhost:88
+ pkinit_require_eku = false
+ v4_name_convert = { host = { rcmd = host } }
+}
+FNAL.GOV = {
+ kdc = localhost:89
+ admin_server = krb-fnal-admin.fnal.gov
+ default_domain = fnal.gov
+}
+
+[domain_realm]
+.cern.ch = CERN.CH
+.fnal.gov = FNAL.GOV
+
+[kadmin]
+default_keys = arcfour-hmac-md5:pw-salt

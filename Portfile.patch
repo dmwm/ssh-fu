@@ -1,0 +1,24 @@
+--- Portfile	2011-09-14 18:30:21.000000000 +0200
++++ Portfile	2011-09-20 22:35:58.000000000 +0200
+@@ -72,6 +72,21 @@
+   depends_run-delete    port:xauth
+ }
+ 
++variant gsskex {
++  set extra_cppflags [concat \
++    "-F/System/Library/Frameworks/OpenDirectory.framework" \
++    "-F/System/Library/Frameworks/CoreFoundation.framework" \
++    "-D_UTMPX_COMPAT -D__APPLE_LAUNCHD__ -D__APPLE_MEMBERSHIP__" \
++    "-D__APPLE_XSAN__"]
++  use_autoreconf yes
++  patch.pre_args -p1
++  patchfiles-append openssh-5.9p1-gsskex-all-20110920.patch apple-keychain.patch
++  configure.args-append --with-4in6 --with-audit=bsm --with-keychain=apple \
++      --disable-utmp --disable-wtmp --with-privsep-user=_sshd \
++      CFLAGS="-fPIE -O2" CPPFLAGS="$extra_cppflags" \
++      LDFLAGS="-Wl,-pie -framework CoreFoundation -framework OpenDirectory"
++}
++
+ # For high-performance patch
+ # re-enable when patch for current version is available
+ #variant hpn description "apply high performance patch" {

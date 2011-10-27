@@ -1,0 +1,112 @@
+#!/bin/sh
+
+# Acquire a token exists for a particular principal ($1). Gets the current
+# cached principal, if any, and its remaining life time, if any. If there
+# is no principal, or it's close to expiring, reacquire a new one.
+ensure_ticket()
+{
+  # Darwin 10.*:
+  #   Kerberos 5 ticket cache: 'API:Initial default ccache'
+  #   Default principal: lat@CERN.CH
+  # Darwin 11.*:
+  #   Kerberos 5 ticket cache: 'API:Initial default ccache'
+  #                 Principal: lat@CERN.CH
+  # Linux:
+  #   Ticket cache: FILE:/tmp/krb5cc_19702_gXo64M
+  #   Default principal: lat@CERN.CH
+
+  local system=$(uname):$(uname -r)
+  local reinit=false
+  local principal=$1
+  local current=$(klist 2>/dev/null |
+    perl -ne '/^(default principal|\s+principal): (.*)/i && print $2')
+
+  # If the requested principal is the currently active one, use it.
+  # Otherwise switch to the requested principal. If that fails force
+  # initialisation.
+  case $current in
+    $principal ) ;; # OK
+    *@[A-Z]*.* ) kswitch -p $principal || reinit=true;;
+  esac
+
+  # Get remaining life time on the principal.
+  now=$(/bin/date +%s)
+  case $system in
+    Darwin:10.* )
+      # Valid Starting     Expires            Service Principal
+      # 10/27/11 08:50:04  10/28/11 08:50:04  krbtgt/CERN.CH@CERN.CH
+      expires=$(klist 2>/dev/null | grep krbtgt | awk '{print $3, $4}')
+      expiretm=$(/bin/date -j -f "%m/%d/%y %H:%M:%S" +%s "$expires" 2>/dev/null)
+      ;;
+
+    Darwin:11.* )
+      # Valid Starting     Expires            Service Principal
+      # Oct 27 08:50:04    Oct 28 08:50:04    krbtgt/CERN.CH@CERN.CH
+      expires=$(klist 2>/dev/null | grep krbtgt | awk '{print $4, $5, $6}')
+      expiretm=$(/bin/date -j -f "%b %d %H:%M:%S" +%s "$expires" 2>/dev/null)
+      ;;
+
+    * )
+      # Valid starting     Expires            Service principal
+      # 10/27/11 09:21:32  10/28/11 08:50:04  krbtgt/CERN.CH@CERN.CH
+      # 'date' does not do time conversions, so use perl Date::Parse
+      expires=$(klist 2>/dev/null | grep krbtgt | awk '{print $3, $4}')
+      expiretm=$(perl -MDate::Parse -e 'print str2time("'"$expires"'")')
+      ;;
+  esac
+
+  # If principal is already bad, or we can't figure out when it would expire
+  # or is near to expiry (< 2 hours life time left), force renewal.
+  if $reinit || [ X"$expires" = X ]; then
+    reinit=true
+  elif [ $expiretm -lt $(expr $(/bin/date +%s) - 7200) ]; then
+    reinit=true
+  fi
+
+  # Maybe renew. Darwin kinit prompts a dialog if input is from /dev/null.
+  # Otherwise go via /dev/tty in terminal, ssh owns our stdin, stdout.
+  case $system in
+    Darwin:* ) $reinit && kinit -l 86400 $principal < /dev/null ;;
+    * )        $reinit && kinit -V -l 86400 $principal </dev/tty >/dev/tty 2>&1 ;;
+  esac
+}
+
+# Process arguments. Just recognise all ssh options so this can be used
+# anywhere where ssh can normally be used. "getopt" may be either BSDish
+# or GNU. The GNU one accepts "-o", which is preferable. Figure out which
+# one to use. We add ourselves one option, "-P PRINCIPAL".
+principal= opts=
+optarg=12346Aab:Cc:D:e:F:fgI:i:KkL:l:m:MNnO:o:P:p:qR:S:sTtVvW:w:XxYy
+case $(getopt -o f -- -f) in
+  *" f "*) eval set -- $(getopt $optarg -- ${1+"$@"}) ;;
+  * )      eval set -- $(POSIXLY_CORRECT=1 getopt $optarg ${1+"$@"}) ;;
+esac
+while [ $# -ge 1 ]; do
+  case $1 in
+    -P ) principal=$2; shift; shift ;;
+    -[12346AaCfgKkMNnqsTtVvXxYy] ) opts="$opts $1"; shift ;;
+    -[bcDeFIiLlmOopRSWw] ) opts="$opts $1 '$2'"; shift; shift ;;
+    -- ) shift; break ;;
+    * ) break ;;
+  esac
+done
+
+# Ensure kerberos token is valid.
+case $1 in
+ *.cern.ch )  ensure_ticket ${principal:-$USER@CERN.CH} ;;
+ *.fnal.gov ) ensure_ticket ${principal:-$USER@FNAL.GOV} ;;
+ *.mit.edu )  ensure_ticket ${principal:-$USER@MIT.EDU} ;;
+ * )          echo "warning: no ticket for $1" 1>&2 ;;
+esac
+
+# Pick SSH. When SSH invokes ProxyCommand, it inserts default $PATH in front
+# of current $PATH, so /usr/bin appears first. So if MacPorts SSH is normally
+# in user's $PATH, we need to explicitly pick it up.
+if [ -x /opt/local/bin/ssh ]; then
+  ssh=/opt/local/bin/ssh
+else
+  ssh=/usr/bin/ssh
+fi
+
+# Transfer over to real SSH.
+eval exec $ssh $opts '${1+"$@"}'
