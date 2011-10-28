@@ -86,6 +86,7 @@ def kill_ssh(tempdir, cmd):
 # Parse command line arguments.
 opt = OptionParser(usage = __doc__)
 opt.add_option("--serve", action="store_true", dest="server", default=False, help="run server")
+opt.add_option("-k", action="store_true", dest="keepout", default=False, help="keep output")
 opt.add_option("-p", type="int", dest="port", default=18889, help="tcp port")
 opt.add_option("-L", action="append", dest="forwards", default=[], help="forwards")
 opts, args = opt.parse_args()
@@ -106,6 +107,13 @@ if len(redirect) != 3 or not redirect[0].isdigit() or not redirect[2].isdigit():
 if opts.server:
   serve_tunnel(int(args[1]), redirect[1], int(redirect[2]))
 else:
+  if not opts.keepout:
+    devnull = file("/dev/null", "w")
+    os.dup2(devnull.fileno(), sys.stdin.fileno())
+    os.dup2(devnull.fileno(), sys.stdout.fileno())
+    os.dup2(devnull.fileno(), sys.stderr.fileno())
+    devnull.close()
+
   tempdir = tempfile.mkdtemp()
   ssh_cmd = ['ssh'] + ["-L%s" % x for x in opts.forwards] + \
     ['-L%d:localhost:%d' % (opts.port, opts.port)] + \
@@ -119,7 +127,7 @@ else:
               and not x.startswith("-oPref")] + \
              ['kill $(pgrep -u $USER -f kdc-tunnel)']
 
-  for sig in signal.SIGINT, signal.SIGTERM, signal.SIGQUIT:
+  for sig in signal.SIGINT, signal.SIGTERM, signal.SIGQUIT, signal.SIGHUP:
     signal.signal(sig, lambda *args: kill_ssh(tempdir, kill_cmd))
 
   serve_client(int(redirect[0]), opts.port)
