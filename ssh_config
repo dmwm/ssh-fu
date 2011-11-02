@@ -49,13 +49,17 @@ Host cmssrv98.fnal.gov
 
 Host cmssrv112.fnal.gov
   User cmsdataops
-  DynamicForward 47172
+  DynamicForward 47272
 
 Host cmssrv73.fnal.gov
   User cmsdatatransfers
-  DynamicForward 47173
+  DynamicForward 47273
   # ForwardX11 yes
   # ForwardX11Trusted yes
+
+Host cmssrv94.fnal.gov
+  User cmsdataops
+  DynamicForward 47274
 
 Host *
   ServerAliveInterval 5

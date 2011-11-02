@@ -17,7 +17,9 @@ function FindProxyForURL(url, host)
 
   else if (shExpMatch(host, "cmsweb-*.cern.ch")
            || shExpMatch(host, "vocms*.cern.ch")
-           || shExpMatch(host, "dmwm*.cern.ch"))
+           || shExpMatch(host, "dmwm*.cern.ch")
+           || shExpMatch(host, "cmsdaq0.cern.ch")
+           || shExpMatch(host, "reqmon*.cern.ch"))
     return "SOCKS5 127.0.0.1:47170";
 
   else if (shExpMatch(host, "cmssrv98.fnal.gov"))
@@ -28,6 +30,9 @@ function FindProxyForURL(url, host)
 
   else if (shExpMatch(host, "cmssrv73.fnal.gov"))
     return "SOCKS5 127.0.0.1:47273";
+
+  else if (shExpMatch(host, "cmssrv94.fnal.gov"))
+    return "SOCKS5 127.0.0.1:47274";
 
   return "DIRECT";
 }
