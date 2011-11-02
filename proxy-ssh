@@ -59,7 +59,7 @@ ensure_ticket()
   # or is near to expiry (< 2 hours life time left), force renewal.
   if $reinit || [ X"$expires" = X ]; then
     reinit=true
-  elif [ $expiretm -lt $(expr $(/bin/date +%s) - 7200) ]; then
+  elif [ $expiretm -lt $(expr $(/bin/date +%s) + 7200) ]; then
     reinit=true
   fi
 
