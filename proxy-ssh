@@ -79,7 +79,7 @@ principal= opts=
 optarg=12346Aab:Cc:D:e:F:fgI:i:KkL:l:m:MNnO:o:P:p:qR:S:sTtVvW:w:XxYy
 case $(getopt -o f -- -f) in
   *" f "*) eval set -- $(getopt $optarg -- ${1+"$@"}) ;;
-  * )      eval set -- $(POSIXLY_CORRECT=1 getopt $optarg ${1+"$@"}) ;;
+  * )      eval set -- $(POSIXLY_CORRECT=1 getopt -o $optarg -- ${1+"$@"}) ;;
 esac
 while [ $# -ge 1 ]; do
   case $1 in
