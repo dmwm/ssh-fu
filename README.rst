@@ -133,6 +133,17 @@ the patches mentioned above works very well.  OpenSSH on SL5 (4.3p2) and SL6
 (5.3p1) do not support ``ControlPersist``, so you need to remove that option
 on those systems.
 
+Your version of SSH may not support some other options given in the example
+configuration.  You have to simply remove any option your SSH does not grok.
+Some SSH versions do not support ``GSSAPITrustDNS`` `but have other changes
+<http://cern.ch/linux/docs/kerberos-access.shtml>`_ which implement similar
+fixes.  If your SSH does not have ``GSSAPITrustDNS``, sooner or later a
+fast-changing load balance alias such as ``lxplus.cern.ch`` will result in
+login failure; the only solution is to retry, or build a fixed SSH.  Lack of
+``GSSAPIRenewalForcesRekey`` means that when you renew token locally, it will
+not be renewed at the destination host side; the solution is to renew token
+on both ends of the connection.
+
 The configuration uses ``ServerAliveInterval``, which is useful in unstable
 networks and especially with autossh as explained below.
 
