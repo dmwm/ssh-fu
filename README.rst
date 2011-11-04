@@ -34,6 +34,7 @@ of these up, but the most convenient operation comes from using the entire set.
 * SSH proxy wrapper script which acquires and switches between kerberos tokens
 * SSH client configuration
 * Web browser SOCKS5 tunneling configuration
+* Tunneling other applications
 * Autossh to automatically rebuild tunnels.
 
 Setting up kerberos
@@ -128,7 +129,9 @@ multiplexing linger about 15 seconds after the last connection closes.  This
 speeds up connection times considerably if you are opening sessions in several
 windows or in quick succession.  Some versions of SSH handle multiplexing
 poorly, so you may want to turn this off.  On OS X the MacPorts SSH with
-the patches mentioned above works very well.
+the patches mentioned above works very well.  OpenSSH on SL5 (4.3p2) and SL6
+(5.3p1) do not support ``ControlPersist``, so you need to remove that option
+on those systems.
 
 The configuration uses ``ServerAliveInterval``, which is useful in unstable
 networks and especially with autossh as explained below.
@@ -171,11 +174,31 @@ Note that whenever you change the file contents, you need to change the file
 path in this dialog once, then change it back -- it won't notice contents
 changes otherwise.
 
-Some people have reported that ``file:`` URLs do not work on OS X Lion, so
-you must use ``http:``, i.e. put the file somewhere on web you control.
-It's also possible the proxy configuration doesn't work for Safari on Lion.
-On Snow Leopard Safari works just fine with proxies, and ``file:`` URL is
-fine.
+On OS X Lion, `Safari is sandboxed
+<https://discussions.apple.com/message/15729635#16106081>`_ in a way which
+requires the proxy configuration file to exist in specific directories, or
+accessible via ``http:``.  Either put ``proxy.pac`` to the required path,
+such as ``/Library/Internet Plug-Ins``, or put it on a web site you control
+and give ``http:`` URL to it.  On Snow Leopard you can use ``file:`` just
+fine as as described above.
+
+Tunneling other applications
+----------------------------
+
+Several applications are natively socks aware.  For example ``curl`` and
+any application using ``libcurl``, for example via ``pycurl``, is socks
+proxying aware.  Set ``$ALL_PROXY`` to the SSH tunnel you created::
+
+  export ALL_PROXY=socks5://localhost:47170
+
+You can use a network wrapper `tsocks <http://tsocks.sourceforge.net/>`_ or
+similar to make other applications tunnel via socks proxy.  There is a
+``tsocks.conf`` file here which corresponds roughly to the ``proxy.pac``.
+Set ``$TSOCKS_CONF_FILE`` to the full path to the file, and prefix command
+line with ``tsocks`` to wrap the application::
+
+  export TSOCKS_CONF_FILE=/path/to/tsocks.conf
+  tsocks wget -SO- http://vocms144.cern.ch:1234/foo
 
 Using autossh to automatically rebuild tunnels
 ----------------------------------------------
