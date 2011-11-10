@@ -63,6 +63,7 @@ Host cmssrv94.fnal.gov
   DynamicForward 47274
 
 Host *
+  IdentitiesOnly yes
   ServerAliveInterval 5
   ServerAliveCountMax 6
   ControlPersist 15
