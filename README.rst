@@ -86,7 +86,7 @@ SSH client configuration
 **If you are configuring access to CERN, do not enable ForwardAgent with
 lxplus.cern.ch, and do not use lxplus.cern.ch as a gateway to other
 (vocmsNNN.cern.ch) hosts.  Get an account on lxvoadm.cern.ch instead and
-use it as your gateway.**
+use it as your gateway. Use ForwardAgent only with trusted servers.**
 
 You'll find here ``ssh_config`` with an example SSH configuration.  Copy the
 relevant contents adapted to your ``~/.ssh/config``.  If you want, you can
@@ -109,7 +109,9 @@ to their protected web servers.
 
 If your local user account is different than your kerberos principal at the
 destination sites, add ``-P you@SITE.CC`` to your proxy-ssh options in your
-``~/.ssh/config`` in the next step.  Also if you didn't put ``proxy-ssh`` in
+``~/.ssh/config`` in the next step.  You will likely also want to add ``User
+account`` under the corresponding ``Host *.site.cc`` rule so ssh uses the
+appropriate account name by default. Also if you didn't put ``proxy-ssh`` in
 your ``$PATH``, then use the full path to it in ``~/.ssh/config``. For
 example if you put ``proxy-ssh`` to ``~/stuff``, and your CERN AFS account
 is ``foo``, then you'd change the CERN ``ProxyCommand`` to::
