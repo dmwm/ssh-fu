@@ -35,14 +35,14 @@ ensure_ticket()
     Darwin:10.* )
       # Valid Starting     Expires            Service Principal
       # 10/27/11 08:50:04  10/28/11 08:50:04  krbtgt/CERN.CH@CERN.CH
-      expires=$(klist 2>/dev/null | grep krbtgt | awk '{print $3, $4}')
+      expires=$(klist 2>/dev/null | grep krbtgt | grep -vi expired | awk '{print $3, $4}')
       expiretm=$(/bin/date -j -f "%m/%d/%y %H:%M:%S" +%s "$expires" 2>/dev/null)
       ;;
 
     Darwin:11.* )
       # Valid Starting     Expires            Service Principal
       # Oct 27 08:50:04    Oct 28 08:50:04    krbtgt/CERN.CH@CERN.CH
-      expires=$(klist 2>/dev/null | grep krbtgt | awk '{print $4, $5, $6}')
+      expires=$(klist 2>/dev/null | grep krbtgt | grep -vi expired | awk '{print $4, $5, $6}')
       expiretm=$(/bin/date -j -f "%b %d %H:%M:%S" +%s "$expires" 2>/dev/null)
       ;;
 
@@ -50,7 +50,7 @@ ensure_ticket()
       # Valid starting     Expires            Service principal
       # 10/27/11 09:21:32  10/28/11 08:50:04  krbtgt/CERN.CH@CERN.CH
       # 'date' does not do time conversions, so use perl Date::Parse
-      expires=$(klist 2>/dev/null | grep krbtgt | awk '{print $3, $4}')
+      expires=$(klist 2>/dev/null | grep krbtgt | grep -vi expired | awk '{print $3, $4}')
       expiretm=$(perl -MDate::Parse -e 'print str2time("'"$expires"'")')
       ;;
   esac
