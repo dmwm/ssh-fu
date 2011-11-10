@@ -23,6 +23,7 @@ Host lxvoadm*.cern.ch vo*.cern.ch cms*.cern.ch lxbuild*.cern.ch macms*.cern.ch c
 Host *cvs*.cern.ch *svn*.cern.ch
   # CVS: http://www.mail-archive.com/debian-ssh@lists.debian.org/msg05389.html
   # SVN: concurrent accesses (e.g. inside cmsBuild) seem to fight over tunnel.
+  GSSAPITrustDNS yes
   ControlPersist no
   ProxyCommand none
 
