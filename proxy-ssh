@@ -66,8 +66,19 @@ ensure_ticket()
   # Maybe renew. Darwin kinit prompts a dialog if input is from /dev/null.
   # Otherwise go via /dev/tty in terminal, ssh owns our stdin, stdout.
   case $system in
-    Darwin:* ) $reinit && kinit -l 86400 $principal < /dev/null ;;
-    * )        $reinit && kinit -V -l 86400 $principal </dev/tty >/dev/tty 2>&1 ;;
+    Darwin:* )
+      if $reinit; then
+        kinit -l 86400 $principal < /dev/null
+      else
+        kinit -R $principal > /dev/null 2>&1 < /dev/null
+      fi ;;
+
+    * )
+      if $reinit; then
+        kinit -V -l 86400 $principal </dev/tty >/dev/tty 2>&1
+      else
+        kinit -R $principal > /dev/null 2>&1 < /dev/null
+      fi ;;
   esac
 }
 
