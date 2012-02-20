@@ -220,10 +220,11 @@ As an added convenience, you can install `autossh
 <http://www.harding.motd.ca/autossh/>`_ to automatically rebuild tunnels.
 Install it, and once you are logged in, type in a window for example::
 
-  autossh -M 0 -q -Nf vocmsNNN.cern.ch sleep 999999
+  autossh -M 0 -Nf -o ControlPersist=no -L 12345:foo.cern.ch:12345 \
+    vocmsNNN.cern.ch
 
 This will automatically re-establish your SSH tunnels whenever your network
-connectivity changes.  For all practical purposes, once you open your laptop,
+connectivity changes. For all practical purposes, once you open your laptop,
 your tunnels will rebuild in about 30 seconds. So usually everything is back
 by the time you actually start working, with no work on your part.  And yes,
 it will automatically prompt you for a new kerberos token whenever your
@@ -231,6 +232,12 @@ token is about to expire.
 
 If you use MacPorts, you can just say ``sudo port install autossh`` to get it.
 Otherwise just download and install into local tools location.
+
+The important part is to turn control channel persistence *off*, otherwise
+autossh and ssh will not understand each other. The ``-f`` option ensures
+autossh drops into background, and won't need a terminal. I normally give
+the command a suite of ``-L`` options to create port redirections for SMTP,
+Oracle, and various other services I like to have tunneled automatically.
 
 The command above uses ``-M 0`` because the ``~/.ssh/config`` is set up to
 use ``ServerAliveInterval``.  You can adjust the timeout you like in your
